@@ -10,7 +10,6 @@ String capitalize(String s) {
   return s[0].toUpperCase() + s.substring(1);
 }
 
-
 class Pokemon {
   final String name;
   final int id;
@@ -51,13 +50,17 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+// ... Existing imports ...
+
 class _MyHomePageState extends State<MyHomePage> {
   late Future<Pokemon> _pokemon;
+  late Future<List<String>> _pokemonTypes;
 
   @override
   void initState() {
     super.initState();
     _pokemon = fetchPokemon();
+    _pokemonTypes = fetchPokemonTypes();
   }
 
   Future<Pokemon> fetchPokemon() async {
@@ -71,6 +74,17 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<List<String>> fetchPokemonTypes() async {
+    final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/1'));
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      final List<dynamic> types = data['types'];
+      return types.map((type) => capitalize(type['type']['name'].toString())).toList();
+    } else {
+      throw Exception('Failed to load Pokemon types');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,26 +105,57 @@ class _MyHomePageState extends State<MyHomePage> {
           Container(
             color: Colors.black.withOpacity(0.5),
             child: Center(
-              child: FutureBuilder<Pokemon>(
-                future: _pokemon,
-                builder: (context, snapshot) {
+              child: FutureBuilder(
+                future: Future.wait([_pokemon, _pokemonTypes]),
+                builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return CircularProgressIndicator();
                   } else if (snapshot.hasError) {
                     return Text('Error: ${snapshot.error}');
                   } else {
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Text(
-                          'Pokemon Name: ${snapshot.data!.name}',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        ),
-                        Text(
-                          'Pokemon ID: ${snapshot.data!.id}',
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        ),
-                      ],
+                    final Pokemon pokemon = snapshot.data![0];
+                    final List<String> types = snapshot.data![1];
+
+                    return Container(
+                      padding: EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            'Pokemon ID: ${pokemon.id}',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                          SizedBox(height: 4.0),
+                          Container(
+                            height: 300,
+                            width: 300,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10.0),
+                              border: Border.all(color: Colors.black, width: 2.0),
+                            ),
+                            child: Image.network(
+                              'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          SizedBox(height: 8.0),
+                          Text(
+                            'Pokemon Type: ${types.join(' / ')}',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                          SizedBox(height: 8.0),
+                          Text(
+                            'Pokemon Name: ${pokemon.name}',
+                            style: TextStyle(color: Colors.white, fontSize: 20),
+                          ),
+                        ],
+                      ),
                     );
                   }
                 },
@@ -122,3 +167,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+
+
+
