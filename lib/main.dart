@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -50,8 +51,6 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-// ... Existing imports ...
-
 class _MyHomePageState extends State<MyHomePage> {
   late Future<Pokemon> _pokemon;
   late Future<List<String>> _pokemonTypes;
@@ -76,6 +75,39 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<List<String>> fetchPokemonTypes() async {
     final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/1'));
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      final List<dynamic> types = data['types'];
+      return types.map((type) => capitalize(type['type']['name'].toString())).toList();
+    } else {
+      throw Exception('Failed to load Pokemon types');
+    }
+  }
+
+  Future<void> _generateRandomPokemon() async {
+    // Generate a random Pokemon ID between 1 and 898 (total number of Pokemon in the API)
+    final randomPokemonId = Random().nextInt(898) + 1;
+
+    setState(() {
+      _pokemon = fetchPokemonById(randomPokemonId);
+      _pokemonTypes = fetchPokemonTypesById(randomPokemonId);
+    });
+  }
+
+  Future<Pokemon> fetchPokemonById(int id) async {
+    final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$id'));
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      return Pokemon.fromJson(data);
+    } else {
+      throw Exception('Failed to load Pokemon');
+    }
+  }
+
+  Future<List<String>> fetchPokemonTypesById(int id) async {
+    final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$id'));
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
@@ -132,8 +164,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                           SizedBox(height: 4.0),
                           Container(
-                            height: 300,
-                            width: 300,
+                            height: 350,
+                            width: 350,
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(10.0),
@@ -154,6 +186,17 @@ class _MyHomePageState extends State<MyHomePage> {
                             'Pokemon Name: ${pokemon.name}',
                             style: TextStyle(color: Colors.white, fontSize: 20),
                           ),
+                          ElevatedButton(
+                            onPressed: _generateRandomPokemon,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                            child: Text(
+                              'Generate New Pokemon',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          )
+
                         ],
                       ),
                     );
@@ -167,7 +210,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
-
 
 
 
